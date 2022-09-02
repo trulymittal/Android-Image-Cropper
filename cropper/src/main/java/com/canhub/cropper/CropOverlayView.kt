@@ -2,6 +2,7 @@ package com.canhub.cropper
 
 import android.annotation.TargetApi
 import android.content.Context
+import android.content.res.Resources
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -12,10 +13,12 @@ import android.graphics.Region
 import android.os.Build
 import android.util.AttributeSet
 import android.util.Log
+import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.ScaleGestureDetector.SimpleOnScaleGestureListener
 import android.view.View
+import androidx.annotation.RequiresApi
 import com.canhub.cropper.CropImageView.CropShape
 import com.canhub.cropper.CropImageView.Guidelines
 import com.canhub.cropper.common.CommonVersionCheck
@@ -34,6 +37,16 @@ class CropOverlayView
 
     companion object {
 
+        /**
+         * Creates the paint object for drawing text label over crop overlay */
+        private fun getTextPaint(options: CropImageOptions): Paint =
+            Paint().apply {
+                strokeWidth = 1f
+                textSize = options.cropperLabelTextSize
+                style = Paint.Style.FILL
+                textAlign = Paint.Align.CENTER
+                this.color = options.cropperLabelTextColor
+            }
         /** Creates the Paint object for drawing.  */
         private fun getNewPaint(color: Int): Paint =
             Paint().apply {
@@ -91,6 +104,8 @@ class CropOverlayView
 
     /** The Paint used to darken the surrounding areas outside the crop area.  */
     private var mBackgroundPaint: Paint? = null
+
+    private var textLabelPaint: Paint? = null
 
     /** Used for oval crop window shape or non-straight rotation drawing.  */
     private val mPath = Path()
@@ -164,6 +179,14 @@ class CropOverlayView
     var cornerShape: CropImageView.CropCornerShape? = null
         private set
 
+    /** To show the text label over crop overlay **/
+    private var isCropLabelEnabled: Boolean = false
+    /** Text to show over text label over crop overlay */
+    private var cropLabelText: String = ""
+    /** Text color to apply over text label over crop overlay */
+    private var cropLabelTextSize: Float = 20f
+    /** Text color to apply over text label over crop overlay */
+    private var cropLabelTextColor = Color.WHITE
     /** the initial crop window rectangle to set  */
     private val mInitialCropWindowRect = Rect()
 
@@ -172,6 +195,9 @@ class CropOverlayView
 
     /** Used to set back LayerType after changing to software.  */
     private var mOriginalLayerType: Int? = null
+
+    /** The maximum vertical gesture exclusion allowed by Android (200dp) in px. **/
+    private val maxVerticalGestureExclusion = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 200f, Resources.getSystem().displayMetrics)
 
     /** Set the crop window change listener.  */
     fun setCropWindowChangeListener(listener: CropWindowChangeListener?) {
@@ -253,7 +279,37 @@ class CropOverlayView
             invalidate()
         }
     }
+    /**
+     * Sets the cropper label if it is enabled
+     */
+    fun setCropperTextLabelVisibility(isEnabled: Boolean) {
+        this.isCropLabelEnabled = isEnabled
+        invalidate()
+    }
 
+    /**
+     * Sets the copy text for cropper text
+     */
+    fun setCropLabelText(textLabel: String?) {
+        textLabel?.let {
+            this.cropLabelText = it
+        }
+    }
+
+    /**
+     * Sets the text size for cropper text
+     */
+    fun setCropLabelTextSize(textSize: Float) {
+        this.cropLabelTextSize = textSize
+        invalidate()
+    }
+    /**
+     * Sets the text color for cropper text
+     */
+    fun setCropLabelTextColor(textColor: Int) {
+        this.cropLabelTextColor = textColor
+        invalidate()
+    }
     /**
      * Sets the guidelines for the CropOverlayView to be either on, off, or to show when resizing the
      * application.
@@ -410,6 +466,10 @@ class CropOverlayView
     fun setInitialAttributeValues(options: CropImageOptions) {
         mOptions = options
         mCropWindowHandler.setInitialAttributeValues(options)
+        setCropLabelTextColor(options.cropperLabelTextColor)
+        setCropLabelTextSize(options.cropperLabelTextSize)
+        setCropLabelText(options.cropperLabelText)
+        setCropperTextLabelVisibility(options.showCropLabel)
         setCropCornerRadius(options.cropCornerRadius)
         setCropCornerShape(options.cornerShape)
         setCropShape(options.cropShape)
@@ -430,6 +490,7 @@ class CropOverlayView
             getNewPaintOrNull(options.borderCornerThickness, options.borderCornerColor)
         mGuidelinePaint = getNewPaintOrNull(options.guidelinesThickness, options.guidelinesColor)
         mBackgroundPaint = getNewPaint(options.backgroundColor)
+        textLabelPaint = getTextPaint(options)
     }
 
     /**
@@ -570,8 +631,59 @@ class CropOverlayView
         }
         // To retain the changes in Paint object when the App goes background this is required
         mBorderCornerPaint = getNewPaintOrNull(mOptions?.borderCornerThickness ?: 0.0f, mOptions?.borderCornerColor ?: Color.WHITE)
+        drawCropLabelText(canvas)
         drawBorders(canvas)
         drawCorners(canvas)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            setSystemGestureExclusionRects()
+        }
+    }
+
+    /**
+     *  Newer Android phones let you go back by swiping from the left or right edge of the screen inwards.
+     *  When the crop window is near the edge it's easy to accidentally swipe back when trying to resize it.
+     *  This can be prevented by setting systemGestureExclusionRects. However Android lets you only exclude max 200dp in total vertically.
+     *  Therefore a top, middle and bottom strip are used so at least the corners and the vertical middle of the crop window are covered.
+     * **/
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun setSystemGestureExclusionRects() {
+        val cropWindowRect = mCropWindowHandler.getRect()
+        val rectTop = systemGestureExclusionRects.getOrElse(0) { Rect() }
+        val rectMiddle = systemGestureExclusionRects.getOrElse(1) { Rect() }
+        val rectBottom = systemGestureExclusionRects.getOrElse(2) { Rect() }
+
+        rectTop.left = (cropWindowRect.left - mTouchRadius).toInt()
+        rectTop.right = (cropWindowRect.right + mTouchRadius).toInt()
+        rectTop.top = (cropWindowRect.top - mTouchRadius).toInt()
+        rectTop.bottom = (rectTop.top + (maxVerticalGestureExclusion * 0.3f)).toInt()
+
+        rectMiddle.left = rectTop.left
+        rectMiddle.right = rectTop.right
+        rectMiddle.top = ((cropWindowRect.top + cropWindowRect.bottom) / 2.0f - (maxVerticalGestureExclusion * 0.2f)).toInt()
+        rectMiddle.bottom = (rectMiddle.top + (maxVerticalGestureExclusion * 0.4f)).toInt()
+
+        rectBottom.left = rectTop.left
+        rectBottom.right = rectTop.right
+        rectBottom.bottom = (cropWindowRect.bottom + mTouchRadius).toInt()
+        rectBottom.top = (rectBottom.bottom - (maxVerticalGestureExclusion * 0.3f)).toInt()
+
+        systemGestureExclusionRects = listOf(rectTop, rectMiddle, rectBottom)
+    }
+
+    /** Draws a text label (which can acts an helper text) on top of crop overlay **/
+    private fun drawCropLabelText(canvas: Canvas) {
+        if (isCropLabelEnabled) {
+            val rect = mCropWindowHandler.getRect()
+            var xCoordinate = (rect.left + rect.right) / 2
+            var yCoordinate = rect.top - 50
+            textLabelPaint?.apply {
+                textSize = cropLabelTextSize
+                color = cropLabelTextColor
+            }
+            canvas.drawText(cropLabelText, xCoordinate, yCoordinate, textLabelPaint!!)
+            canvas.save()
+        }
     }
 
     /** Draw shadow background over the image not including the crop area.  */
@@ -893,6 +1005,7 @@ class CropOverlayView
                 drawCircleShape(canvas, rect, cornerOffset, cornerExtension, radius)
             }
             CropImageView.CropCornerShape.RECTANGLE -> drawLineShape(canvas, rect, cornerOffset, cornerExtension)
+            null -> Unit
         }
     }
 

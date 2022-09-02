@@ -3,6 +3,7 @@ package com.canhub.cropper
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.net.Uri
+import androidx.annotation.ColorInt
 import androidx.annotation.DrawableRes
 import com.canhub.cropper.CropImageOptions.Companion.DEGREES_360
 import com.canhub.cropper.CropImageView.CropShape
@@ -49,6 +50,7 @@ data class CropImageContractOptions @JvmOverloads constructor(
         cropImageOptions.cropShape = cropShape
         return this
     }
+
     /**
      * To set the shape of the cropper corner (RECTANGLE / OVAL)
      * Default: RECTANGLE
@@ -123,6 +125,11 @@ data class CropImageContractOptions @JvmOverloads constructor(
      */
     fun setShowCropOverlay(showCropOverlay: Boolean): CropImageContractOptions {
         cropImageOptions.showCropOverlay = showCropOverlay
+        return this
+    }
+
+    fun setShowCropLabel(showCropLabel: Boolean): CropImageContractOptions {
+        cropImageOptions.showCropLabel = showCropLabel
         return this
     }
 
@@ -489,6 +496,65 @@ data class CropImageContractOptions @JvmOverloads constructor(
     fun setCropMenuCropButtonIcon(@DrawableRes drawableResource: Int): CropImageContractOptions {
         cropImageOptions.cropMenuCropButtonIcon = drawableResource
         return this
+    }
+
+    /**
+     * Set whether the cropping option should be allowed or skipped entirely.<br></br>
+     * *Default: false*
+     */
+    fun setSkipEditing(skipEditing: Boolean): CropImageContractOptions {
+        cropImageOptions.skipEditing = skipEditing
+        cropImageOptions.showCropOverlay = !skipEditing
+        return this
+    }
+
+    /**
+     * Shows an intent chooser instead of the alert dialog when choosing an image source.
+     *
+     * *Default: false*
+     *
+     * Note: To show the camera app as an option in Intent chooser you will need to add
+     * the camera permission ("android.permission.CAMERA") to your manifest file.
+     */
+    fun setShowIntentChooser(showIntentChooser: Boolean) = cropImageOptions.apply {
+        this.showIntentChooser = showIntentChooser
+    }
+
+    /**
+     * Sets a custom title for the intent chooser
+     */
+    fun setIntentChooserTitle(intentChooserTitle: String) = cropImageOptions.apply {
+        this.intentChooserTitle = intentChooserTitle
+    }
+
+    /**
+     * This takes the given app package list (list of app package names)
+     * and displays them first among the list of apps available
+     *
+     * @param priorityAppPackages accepts a list of strings of app package names
+     * Apps are displayed in the order you pass them if they are available on your device
+     *
+     * Note: If you pass an empty list here there will be no sorting of the apps list
+     * shown in the intent chooser.
+     * By default, the library sorts the list putting a few common
+     * apps like Google Photos and Google Photos Go at the start of the list.
+     */
+    fun setIntentChooserPriorityList(priorityAppPackages: List<String>) = cropImageOptions.apply {
+        this.intentChooserPriorityList = priorityAppPackages
+    }
+
+    /**
+     * Sets the background color of the Crop Image Activity screen.
+     */
+    fun setActivityBackgroundColor(@ColorInt color: Int) = cropImageOptions.apply {
+        this.activityBackgroundColor = color
+    }
+
+    /**
+     * Sets the toolbar color of the Crop Image Activity screen.
+     */
+    fun setToolbarColor(@ColorInt color: Int) = cropImageOptions.apply {
+        this.toolbarColor = color
     }
 }
 

@@ -74,7 +74,7 @@ internal object BitmapUtils {
      * If no rotation is required the image will not be rotated.<br></br>
      * New bitmap is created and the old one is recycled.
      */
-    fun rotateBitmapByExif(bitmap: Bitmap?, context: Context, uri: Uri?): RotateBitmapResult {
+    fun orientateBitmapByExif(bitmap: Bitmap?, context: Context, uri: Uri?): RotateBitmapResult {
         var ei: ExifInterface? = null
         try {
             val `is` = context.contentResolver.openInputStream(uri!!)
@@ -84,7 +84,7 @@ internal object BitmapUtils {
             }
         } catch (ignored: Exception) {
         }
-        return if (ei != null) rotateBitmapByExif(bitmap, ei) else RotateBitmapResult(bitmap, 0)
+        return if (ei != null) orientateBitmapByExif(bitmap, ei) else RotateBitmapResult(bitmap, 0)
     }
 
     /**
@@ -92,19 +92,21 @@ internal object BitmapUtils {
      * If no rotation is required the image will not be rotated.<br></br>
      * New bitmap is created and the old one is recycled.
      */
-    fun rotateBitmapByExif(bitmap: Bitmap?, exif: ExifInterface): RotateBitmapResult {
-        val degrees: Int = when (
-            exif.getAttributeInt(
-                ExifInterface.TAG_ORIENTATION,
-                ExifInterface.ORIENTATION_NORMAL
-            )
-        ) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> 90
+    fun orientateBitmapByExif(bitmap: Bitmap?, exif: ExifInterface): RotateBitmapResult {
+        val orientationAttributeInt =
+            exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        val degrees: Int = when (orientationAttributeInt) {
+            ExifInterface.ORIENTATION_ROTATE_90, ExifInterface.ORIENTATION_TRANSVERSE,
+            ExifInterface.ORIENTATION_TRANSPOSE -> 90
             ExifInterface.ORIENTATION_ROTATE_180 -> 180
             ExifInterface.ORIENTATION_ROTATE_270 -> 270
             else -> 0
         }
-        return RotateBitmapResult(bitmap, degrees)
+        val flipHorizontally = orientationAttributeInt == ExifInterface.ORIENTATION_FLIP_HORIZONTAL ||
+            orientationAttributeInt == ExifInterface.ORIENTATION_TRANSPOSE
+        val flipVertically = orientationAttributeInt == ExifInterface.ORIENTATION_FLIP_VERTICAL ||
+            orientationAttributeInt == ExifInterface.ORIENTATION_TRANSVERSE
+        return RotateBitmapResult(bitmap, degrees, flipHorizontally, flipVertically)
     }
 
     /**
@@ -132,9 +134,7 @@ internal object BitmapUtils {
             val bitmap = decodeImage(resolver, uri, options)
             BitmapSampled(bitmap, options.inSampleSize)
         } catch (e: Exception) {
-            throw RuntimeException(
-                "Failed to load sampled bitmap: $uri\r\n${e.message}", e
-            )
+            throw CropException.FailedToLoadBitmap(uri, e.message)
         }
     }
 
@@ -658,9 +658,7 @@ internal object BitmapUtils {
             result?.recycle()
             throw e
         } catch (e: Exception) {
-            throw RuntimeException(
-                "Failed to load sampled bitmap: $loadedImageUri\r\n${e.message}", e
-            )
+            throw CropException.FailedToLoadBitmap(loadedImageUri, e.message)
         }
         return BitmapSampled(result, sampleSize)
     }
@@ -704,7 +702,7 @@ internal object BitmapUtils {
                 closeSafe(stream)
             }
         } while (options.inSampleSize <= 512)
-        throw RuntimeException("Failed to decode image: $uri")
+        throw CropException.FailedToDecodeImage(uri)
     }
 
     /**
@@ -745,10 +743,7 @@ internal object BitmapUtils {
             closeSafe(stream)
             decoder?.recycle()
         } catch (e: Exception) {
-            throw RuntimeException(
-                "Failed to load sampled bitmap: $uri\r\n${e.message}",
-                e
-            )
+            throw CropException.FailedToLoadBitmap(uri, e.message)
         }
         return BitmapSampled(null, 1)
     }
@@ -977,6 +972,14 @@ internal object BitmapUtils {
         /**
          * The degrees the image was rotated
          */
-        val degrees: Int
+        val degrees: Int,
+        /**
+         * If the image was flipped horizontally
+         */
+        val flipHorizontally: Boolean = false,
+        /**
+         * If the image was flipped vertically
+         */
+        val flipVertically: Boolean = false
     )
 }

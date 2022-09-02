@@ -9,7 +9,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
-## [4.2.0] - unreleased
+## [x.x.x] - unreleased
+### Fixed
+- Fixed the mistake in hindi conversion of "Crop" [#402](https://github.com/CanHub/Android-Image-Cropper/issues/402)
+- Added the option to set custom color to toolbar of CropImageActivity [#421](https://github.com/CanHub/Android-Image-Cropper/issues/421)
+- Added the option to set custom background color to activity of CropImageActivity [#421](https://github.com/CanHub/Android-Image-Cropper/issues/421)
+- Fixed accidentally swiping back on newer Android devices when trying to resize the crop window [#423](https://github.com/CanHub/Android-Image-Cropper/issues/423)
+- Fixed an issue on sample project where back button would not work when dialog is shown [#427](https://github.com/CanHub/Android-Image-Cropper/issues/427)
+- Fixed an issue on sample project where cancelling/going back would go to a screen with empty image [#427](https://github.com/CanHub/Android-Image-Cropper/issues/427)
+
+## [4.3.1] - 20/07/2022
+### Fix
+- CropImageView: Added support for handling all EXIF orientation values. [#408](https://github.com/CanHub/Android-Image-Cropper/issues/408)
+- CropImageView: Use customOutputUri instance property as a fallback in startCropWorkerTask. [#401](https://github.com/CanHub/Android-Image-Cropper/issues/401)
+
+### Added
+- CropImageOptions: Option to change progress bar color. [#390](https://github.com/CanHub/Android-Image-Cropper/issues/390)
+
+## [4.3.0] - 10/06/2022
+### Added
+- Added a helper text on top of crop overlay which moves along with it. [#381](https://github.com/CanHub/Android-Image-Cropper/issues/381)
+
+### Fixed
+- The translation of `Camera` and `Gallery` does not exist in some languages.[#358](https://github.com/CanHub/Android-Image-Cropper/issues/358)
+
+## [4.2.1] - 04/04/2022
+### Added
+- Added support for optionally displaying an intent chooser when selecting image source. [#325](https://github.com/CanHub/Android-Image-Cropper/issues/325)
+### Changed
+- CropException sealed class with cancellation and Image exceptions  [#332](https://github.com/CanHub/Android-Image-Cropper/issues/332)
+### Fixed
+- Fix disable closing AlertDialog when touching outside the dialog [#334](https://github.com/CanHub/Android-Image-Cropper/issues/334)
+
+## [4.2.0] - 21/03/2022
+### Added
+- Added an option to skip manual editing and return entire image when required [#324](https://github.com/CanHub/Android-Image-Cropper/pull/324)
+### Fixed
+- Added missing support for `ScaleType.CENTER_CROP` [#220](https://github.com/CanHub/Android-Image-Cropper/issues/220)
+- State is now preserved across configuration changes [#296](https://github.com/CanHub/Android-Image-Cropper/issues/296)
+- Fix shadow bug [#261](https://github.com/CanHub/Android-Image-Cropper/issues/261)
+### Changed
+- Update portuguese strings [#321](https://github.com/CanHub/Android-Image-Cropper/issues/321)
 
 ## [4.1.0] - 02/02/2022
 ### Fixed
@@ -103,7 +143,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 - ENOENT (no such file or directory) [#99](https://github.com/CanHub/Android-Image-Cropper/issues/99)
-- `content://` instead of `file://` [#83](https://github.com/CanHub/Android-Image-Cropper/issues/83) [#84](https://github.com/CanHub/Android-Image-Cropper/issues/84) 
+- `content://` instead of `file://` [#83](https://github.com/CanHub/Android-Image-Cropper/issues/83) [#84](https://github.com/CanHub/Android-Image-Cropper/issues/84)
 
 ## [2.3.2-alpha] - 12/04/21
 ### Added

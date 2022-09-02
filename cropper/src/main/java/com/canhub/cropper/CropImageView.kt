@@ -2,13 +2,16 @@ package com.canhub.cropper
 
 import android.app.Activity
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Bitmap.CompressFormat
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.RectF
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
 import android.provider.MediaStore
@@ -78,18 +81,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
 
     /** The initial scale type of the image in the crop image view  */
     private var mScaleType: ScaleType
-    /**
-     * if to save bitmap on save instance state.<br></br>
-     * It is best to avoid it by using URI in setting image for cropping.<br></br>
-     * If false the bitmap is not saved and if restore is required to view will be empty, storing the
-     * bitmap requires saving it to file which can be expensive. default: false.
-     */
-    /**
-     * if to save bitmap on save instance state.<br></br>
-     * It is best to avoid it by using URI in setting image for cropping.<br></br>
-     * If false the bitmap is not saved and if restore is required to view will be empty, storing the
-     * bitmap requires saving it to file which can be expensive. default: false.
-     */
+
     /**
      * if to save bitmap on save instance state.<br></br>
      * It is best to avoid it by using URI in setting image for cropping.<br></br>
@@ -104,6 +96,29 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
      * default: true, may disable for animation or frame transition.
      */
     private var mShowCropOverlay = true
+
+    /** If true, shows a helper text label over crop overlay UI
+     *  default: false
+     */
+    private var mShowCropLabel = false
+
+    /**
+     * Helper text label over crop overlay UI
+     * default: empty string
+     */
+    private var mCropTextLabel = ""
+
+    /**
+     * Text size for text label over crop overlay UI
+     * default: 20sp
+     */
+    private var mCropLabelTextSize = 20f
+
+    /**
+     * Text color for text label over crop overlay UI
+     * default: White
+     */
+    private var mCropLabelTextColor = Color.WHITE
 
     /**
      * if to show progress bar when image async loading/cropping is in progress.<br></br>
@@ -162,19 +177,13 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
      */
     private var mSizeChanged = false
 
-    /**
-     * Temp URI used to save bitmap image to disk to preserve for instance state in case cropped was
-     * set with bitmap
-     */
-    private var saveInstanceStateBitmapUri: Uri? = null
-
     /** Task used to load bitmap async from UI thread  */
     private var bitmapLoadingWorkerJob: WeakReference<BitmapLoadingWorkerJob>? = null
 
     /** Task used to crop bitmap async from UI thread  */
     private var bitmapCroppingWorkerJob: WeakReference<BitmapCroppingWorkerJob>? = null
-    /** Get the scale type of the image in the crop view.  */
-    /** Set the scale type of the image in the crop view  */
+
+    /** Get / set the scale type of the image in the crop view.  */
     var scaleType: ScaleType
         get() = mScaleType
         set(scaleType) {
@@ -187,7 +196,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
                 requestLayout()
             }
         }
-    /** The shape of the cropping area - rectangle/circular.  */
+
     /**
      * The shape of the cropping area - rectangle/circular.<br></br>
      * To set square/circle crop shape set aspect ratio to 1:1.
@@ -205,6 +214,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
         set(cropShape) {
             mCropOverlayView!!.setCropShape(cropShape!!)
         }
+
     /**
      * The shape of the crop corner in the crop overlay (Rectangular / Circular)
      */
@@ -214,7 +224,6 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
             mCropOverlayView!!.setCropCornerShape(cornerShape!!)
         }
 
-    /** if auto-zoom functionality is enabled. default: true.  */
     /** Set auto-zoom functionality to enabled/disabled.  */
     var isAutoZoomEnabled: Boolean
         get() = mAutoZoomEnabled
@@ -226,7 +235,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
             }
         }
 
-    /** Set multi touch functionality to enabled/disabled.  */
+    /** Set multi-touch functionality to enabled/disabled.  */
     fun setMultiTouchEnabled(multiTouchEnabled: Boolean) {
         if (mCropOverlayView!!.setMultiTouchEnabled(multiTouchEnabled)) {
             handleCropWindowChanged(inProgress = false, animate = false)
@@ -241,7 +250,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
             mCropOverlayView.invalidate()
         }
     }
-    /** The max zoom allowed during cropping.  */
+
     /** The max zoom allowed during cropping.  */
     var maxZoom: Int
         get() = mMaxZoom
@@ -268,15 +277,9 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
     fun setMaxCropResultSize(maxCropResultWidth: Int, maxCropResultHeight: Int) {
         mCropOverlayView!!.setMaxCropResultSize(maxCropResultWidth, maxCropResultHeight)
     }
+
     /**
-     * Get the amount of degrees the cropping image is rotated clockwise.<br></br>
-     *
-     * @return 0-360
-     */
-    /**
-     * Set the amount of degrees the cropping image is rotated clockwise.<br></br>
-     *
-     * degrees 0-360
+     * Set / Get the amount of degrees (between 0 and 360) the cropping image is rotated clockwise.<br></br>
      */
     var rotatedDegrees: Int
         get() = mDegreesRotated
@@ -300,7 +303,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
     fun setFixedAspectRatio(fixAspectRatio: Boolean) {
         mCropOverlayView!!.setFixedAspectRatio(fixAspectRatio)
     }
-    /** whether the image should be flipped horizontally  */
+
     /** Sets whether the image should be flipped horizontally  */
     var isFlippedHorizontally: Boolean
         get() = mFlipHorizontally
@@ -317,7 +320,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
         }
     /** the Android Uri to save the cropped image to  */
     var customOutputUri: Uri? = null
-    /** whether the image should be flipped vertically  */
+
     /** Sets whether the image should be flipped vertically  */
     var isFlippedVertically: Boolean
         get() = mFlipVertically
@@ -375,10 +378,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
     fun setSnapRadius(snapRadius: Float) {
         if (snapRadius >= 0) mCropOverlayView!!.setSnapRadius(snapRadius)
     }
-    /**
-     * if to show progress bar when image async loading/cropping is in progress.<br></br>
-     * default: true, disable to provide custom progress bar UI.
-     */
+
     /**
      * if to show progress bar when image async loading/cropping is in progress.<br></br>
      * default: true, disable to provide custom progress bar UI.
@@ -391,11 +391,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
                 setProgressBarVisibility()
             }
         }
-    /**
-     * if to show crop overlay UI what contains the crop window UI surrounded by background over the
-     * cropping image.<br></br>
-     * default: true, may disable for animation or frame transition.
-     */
+
     /**
      * if to show crop overlay UI what contains the crop window UI surrounded by background over the
      * cropping image.<br></br>
@@ -408,6 +404,35 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
                 mShowCropOverlay = showCropOverlay
                 setCropOverlayVisibility()
             }
+        }
+    /**
+     * If enabled, show a text label on top of crop overlay UI, which gets moved along with the cropper
+     */
+    var isShowCropLabel: Boolean
+        get() = mShowCropLabel
+        set(showCropLabel) {
+            if (mShowCropLabel != showCropLabel) {
+                mShowCropLabel = showCropLabel
+                mCropOverlayView?.setCropperTextLabelVisibility(mShowCropLabel)
+            }
+        }
+    var cropLabelText: String
+        get() = mCropTextLabel
+        set(cropLabelText) {
+            mCropTextLabel = cropLabelText
+            mCropOverlayView?.setCropLabelText(cropLabelText)
+        }
+    var cropLabelTextSize: Float
+        get() = mCropLabelTextSize
+        set(textSize) {
+            mCropLabelTextSize = cropLabelTextSize
+            mCropOverlayView?.setCropLabelTextSize(textSize)
+        }
+    var cropLabelTextColor: Int
+        get() = mCropLabelTextColor
+        set(cropLabelTextColor) {
+            mCropLabelTextColor = cropLabelTextColor
+            mCropOverlayView?.setCropLabelTextColor(cropLabelTextColor)
         }
     /** Returns the integer of the imageResource  */
     /**
@@ -559,7 +584,6 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
     fun getCroppedImage(reqWidth: Int, reqHeight: Int, options: RequestSizeOptions): Bitmap? {
         var croppedBitmap: Bitmap? = null
         if (originalBitmap != null) {
-            imageView.clearAnimation()
             val newReqWidth = if (options != RequestSizeOptions.NONE) reqWidth else 0
             val newReqHeight = if (options != RequestSizeOptions.NONE) reqHeight else 0
             croppedBitmap = if (imageUri != null &&
@@ -629,7 +653,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
             options = options,
             saveCompressFormat = saveCompressFormat,
             saveCompressQuality = saveCompressQuality,
-            customOutputUri = customOutputUri
+            customOutputUri = customOutputUri,
         )
     }
 
@@ -687,9 +711,11 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
         val setBitmap: Bitmap?
         var degreesRotated = 0
         if (bitmap != null && exif != null) {
-            val result = BitmapUtils.rotateBitmapByExif(bitmap, exif)
+            val result = BitmapUtils.orientateBitmapByExif(bitmap, exif)
             setBitmap = result.bitmap
             degreesRotated = result.degrees
+            mFlipHorizontally = result.flipHorizontally
+            mFlipVertically = result.flipVertically
             mInitialDegreesRotated = result.degrees
         } else setBitmap = bitmap
 
@@ -842,6 +868,8 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
         setProgressBarVisibility()
         if (result.error == null) {
             mInitialDegreesRotated = result.degreesRotated
+            mFlipHorizontally = result.flipHorizontally
+            mFlipVertically = result.flipVertically
             setBitmap(
                 result.bitmap,
                 0,
@@ -894,7 +922,6 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
         degreesRotated: Int
     ) {
         if (originalBitmap == null || originalBitmap != bitmap) {
-            imageView.clearAnimation()
             clearImageInt()
             originalBitmap = bitmap
             imageView.setImageBitmap(originalBitmap)
@@ -935,7 +962,6 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
         mZoomOffsetX = 0f
         mZoomOffsetY = 0f
         mImageMatrix.reset()
-        saveInstanceStateBitmapUri = null
         mRestoreCropWindowRect = null
         mRestoreDegreesRotated = 0
         imageView.setImageBitmap(null)
@@ -967,7 +993,6 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
     ) {
         val bitmap = originalBitmap
         if (bitmap != null) {
-            imageView.clearAnimation()
             val currentTask =
                 if (bitmapCroppingWorkerJob != null) bitmapCroppingWorkerJob!!.get() else null
             currentTask?.cancel()
@@ -997,7 +1022,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
                     options = options,
                     saveCompressFormat = saveCompressFormat,
                     saveCompressQuality = saveCompressQuality,
-                    customOutputUri = customOutputUri,
+                    customOutputUri = customOutputUri ?: this.customOutputUri,
                 )
             )
 
@@ -1011,14 +1036,17 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
             return super.onSaveInstanceState()
         }
         val bundle = Bundle()
-        if (isSaveBitmapToInstanceState && saveInstanceStateBitmapUri == null && mImageResource < 1) {
-            saveInstanceStateBitmapUri = BitmapUtils.writeTempStateStoreBitmap(
-                context = context,
-                bitmap = originalBitmap,
-                customOutputUri = customOutputUri
-            )
-        }
-        if (saveInstanceStateBitmapUri != null && originalBitmap != null) {
+        val loadedImageUri =
+            if (isSaveBitmapToInstanceState && imageUri == null && mImageResource < 1) {
+                BitmapUtils.writeTempStateStoreBitmap(
+                    context = context,
+                    bitmap = originalBitmap,
+                    customOutputUri = customOutputUri
+                )
+            } else {
+                imageUri
+            }
+        if (loadedImageUri != null && originalBitmap != null) {
             val key = UUID.randomUUID().toString()
             BitmapUtils.mStateBitmap = Pair(key, WeakReference(originalBitmap))
             bundle.putString("LOADED_IMAGE_STATE_BITMAP_KEY", key)
@@ -1030,7 +1058,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
             }
         }
         bundle.putParcelable("instanceState", super.onSaveInstanceState())
-        bundle.putParcelable("LOADED_IMAGE_URI", saveInstanceStateBitmapUri)
+        bundle.putParcelable("LOADED_IMAGE_URI", loadedImageUri)
         bundle.putInt("LOADED_IMAGE_RESOURCE", mImageResource)
         bundle.putInt("LOADED_SAMPLE_SIZE", loadedSampleSize)
         bundle.putInt("DEGREES_ROTATED", mDegreesRotated)
@@ -1044,7 +1072,7 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
         bundle.putInt("CROP_MAX_ZOOM", mMaxZoom)
         bundle.putBoolean("CROP_FLIP_HORIZONTALLY", mFlipHorizontally)
         bundle.putBoolean("CROP_FLIP_VERTICALLY", mFlipVertically)
-
+        bundle.putBoolean("SHOW_CROP_LABEL", mShowCropLabel)
         return bundle
     }
 
@@ -1095,6 +1123,8 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
                 mMaxZoom = state.getInt("CROP_MAX_ZOOM")
                 mFlipHorizontally = state.getBoolean("CROP_FLIP_HORIZONTALLY")
                 mFlipVertically = state.getBoolean("CROP_FLIP_VERTICALLY")
+                mShowCropLabel = state.getBoolean("SHOW_CROP_LABEL")
+                mCropOverlayView.setCropperTextLabelVisibility(mShowCropLabel)
             }
             super.onRestoreInstanceState(state.getParcelable("instanceState"))
         } else {
@@ -1306,6 +1336,11 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
                     BitmapUtils.getRectCenterY(mImagePoints)
                 )
                 mapImagePointsByImageMatrix()
+            } else if (mScaleType == ScaleType.CENTER_CROP) {
+                mZoom = max(
+                    getWidth() / BitmapUtils.getRectWidth(mImagePoints),
+                    getHeight() / BitmapUtils.getRectHeight(mImagePoints)
+                )
             }
             // scale by the current zoom level
             val scaleX = if (mFlipHorizontally) -mZoom else mZoom
@@ -1318,7 +1353,11 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
             )
             mapImagePointsByImageMatrix()
             mImageMatrix.mapRect(cropRect)
-            if (center) {
+
+            if (mScaleType == ScaleType.CENTER_CROP && center && !animate) {
+                mZoomOffsetX = 0f
+                mZoomOffsetY = 0f
+            } else if (center) {
                 // set the zoomed area to be as to the center of cropping window as possible
                 mZoomOffsetX =
                     if (width > BitmapUtils.getRectWidth(mImagePoints)) 0f
@@ -1880,6 +1919,21 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
                         R.styleable.CropImageView_cropFlipHorizontally,
                         options.flipVertically
                     )
+                    options.cropperLabelTextSize = ta.getDimension(
+                        R.styleable.CropImageView_cropperLabelTextSize,
+                        options.cropperLabelTextSize
+                    )
+                    options.cropperLabelTextColor = ta.getInteger(
+                        R.styleable.CropImageView_cropperLabelTextColor,
+                        options.cropperLabelTextColor
+                    )
+                    options.cropperLabelText = ta.getString(
+                        R.styleable.CropImageView_cropperLabelText
+                    )
+                    options.showCropLabel = ta.getBoolean(
+                        R.styleable.CropImageView_cropShowLabel,
+                        options.showCropLabel
+                    )
                     isSaveBitmapToInstanceState = ta.getBoolean(
                         R.styleable.CropImageView_cropSaveBitmapToInstanceState,
                         isSaveBitmapToInstanceState
@@ -1900,6 +1954,8 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
         mScaleType = options.scaleType
         mAutoZoomEnabled = options.autoZoomEnabled
         mMaxZoom = options.maxZoom
+        mCropLabelTextSize = options.cropperLabelTextSize
+        mShowCropLabel = options.showCropLabel
         mShowCropOverlay = options.showCropOverlay
         mShowProgressBar = options.showProgressBar
         mFlipHorizontally = options.flipHorizontally
@@ -1912,6 +1968,9 @@ class CropImageView @JvmOverloads constructor(context: Context, attrs: Attribute
         mCropOverlayView.setCropWindowChangeListener(this)
         mCropOverlayView.setInitialAttributeValues(options)
         mProgressBar = v.findViewById(R.id.CropProgressBar)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            mProgressBar.indeterminateTintList = ColorStateList.valueOf(options.progressBarColor)
+        }
         setProgressBarVisibility()
     }
 
